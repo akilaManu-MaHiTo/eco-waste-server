@@ -3,7 +3,7 @@ const Payment = require("../models/Payhere");
 exports.notifyPayment = async (req, res) => {
   try {
     const paymentData = req.body;
-
+    console.log("Received payment notification:", paymentData);
     // Save or update payment
     const payment = await Payment.findOneAndUpdate(
       { payment_id: paymentData.payment_id },
