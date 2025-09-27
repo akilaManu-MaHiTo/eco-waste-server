@@ -7,6 +7,7 @@ const roleRoutes = require("./routes/roleRoutes");
 const payhereRoutes = require("./routes/payhereHashRoutes");
 const checkoutRoutes = require("./routes/checkoutRoutes");
 const wasteRoutes = require("./routes/wasteRoutes");
+const garbageRoutes = require("./routes/garbageRouter");
 
 const cors = require("cors");
 const app = express();
@@ -26,6 +27,8 @@ app.use("/api/role", roleRoutes);
 app.use("/api/payhere", payhereRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/waste", wasteRoutes);
+app.use("/api/garbage", garbageRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("Welcome to the backend API!");
