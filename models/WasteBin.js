@@ -10,15 +10,15 @@ const wasteBinSchema = new mongoose.Schema(
     },
     location: {
       type: String,
-      required: true,
+      required: false,
     },
     currentWasteLevel: { 
         type: Number, 
-        required: true 
+        required: false 
     },
     thresholdLevel: { 
         type: Number, 
-        required: true 
+        required: false 
     },
     binType: { 
         type: String, 
