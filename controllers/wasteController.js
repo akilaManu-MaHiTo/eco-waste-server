@@ -5,7 +5,7 @@ const User = require("../models/User");
 // CREATE WasteBin
 exports.createWasteBin = async (req, res) => {
   try {
-    const { binType } = req.body;
+    const { binType, thresholdLevel } = req.body;
     const userId = req.user.id;
     const user = await User.findById(userId);
     const userRole = await Role.findById(user.userType);
@@ -26,6 +26,7 @@ exports.createWasteBin = async (req, res) => {
     const newWasteBin = await WasteBin.create({
       binId,
       binType,
+      thresholdLevel
     });
 
     res.status(201).json(newWasteBin);
@@ -101,7 +102,7 @@ exports.updateWasteBin = async (req, res) => {
     // Update the waste bin
     const updatedWasteBin = await WasteBin.findByIdAndUpdate(
       id,
-      { location, currentWasteLevel, thresholdLevel },
+      { location, currentWasteLevel, thresholdLevel, availability },
       { new: true, runValidators: true }
     );
 
