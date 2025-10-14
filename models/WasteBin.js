@@ -25,7 +25,7 @@ const wasteBinSchema = new mongoose.Schema(
     binType: {
       type: String,
       required: true,
-      enum: ["food", "paper", "plastic"],
+      enum: ["Food", "Paper", "Plastic"],
     },
     availability: {
       type: Boolean,

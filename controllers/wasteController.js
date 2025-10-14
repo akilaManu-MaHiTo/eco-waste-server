@@ -86,7 +86,7 @@ exports.updateWasteBin = async (req, res) => {
     const { id } = req.params; 
     console.log("bin ID: " + id);
 
-    const { location, currentWasteLevel, thresholdLevel } = req.body;
+    const { location, currentWasteLevel, thresholdLevel, availability } = req.body;
 
     // Permission check
     const userId = req.user.id;
