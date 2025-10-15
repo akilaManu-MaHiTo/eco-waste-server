@@ -13,8 +13,8 @@ exports.notifyPayment = async (req, res) => {
     const payment = Payment.create(paymentData);
     const requestComplete = GarbageRequest.create({
       garbageId: paymentData.custom_2,
-      price: paymentData.amount,
-      currency: paymentData.currency,
+      price: paymentData.payhere_amount,
+      currency: paymentData.payhere_currency,
       status: "Pending",
     });
 
