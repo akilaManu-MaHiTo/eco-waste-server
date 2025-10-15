@@ -25,11 +25,15 @@ exports.notifyPayment = async (req, res) => {
         { status: "Requested" },
         { new: true }
       );
+
+      console.log("Garbage request created:", requestComplete._id);
+    } else {
+      console.log(
+        "Payment not successful, status code:",
+        paymentData.status_code
+      );
     }
-
     console.log("Payment processed:", payment.payment_id);
-    console.log("Garbage request created:", requestComplete._id);
-
     res.status(200).send("OK");
   } catch (error) {
     console.error("Error saving payment:", error);
