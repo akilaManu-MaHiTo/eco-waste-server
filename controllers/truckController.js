@@ -4,7 +4,7 @@ const User = require("../models/User");
 // CREATE Truck
 exports.createTruck = async (req, res) => {
   try {
-    const { capacity, status, currentLocation, assignedRoute, lattitude, longitude } = req.body;
+    const { capacity, status, currentLocation, assignedRoute, latitude, longitude } = req.body;
     const userId = req.user.id;
 
     // Get the last created truck to determine next truckId
@@ -28,7 +28,7 @@ exports.createTruck = async (req, res) => {
       driver: userId,
       status,
       currentLocation,
-      lattitude,
+      latitude,
       longitude,
       assignedRoute,
     });
@@ -85,12 +85,12 @@ exports.updateTruck = async (req, res) => {
     const { id } = req.params;
     console.log("Truck ID:", id);
 
-    const { capacity, status, currentLocation, lattitude, longitude } = req.body;
+    const { capacity, status, currentLocation, latitude, longitude } = req.body;
 
     // ✅ Use an object as the filter
     const updatedTruck = await Truck.findOneAndUpdate(
       { _id: id }, // or { truckId: id } if you're using custom truckId
-      { capacity, status, currentLocation, lattitude, longitude },
+      { capacity, status, currentLocation, latitude, longitude },
       { new: true } // returns updated document
     );
 

@@ -25,7 +25,7 @@ const truckSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    lattitude: {
+    latitude: {
       type: Number,
       default: null,
     },

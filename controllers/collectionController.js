@@ -89,3 +89,47 @@ exports.deleteCollectionRoute = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get route by truck ID (only pending delivery)
+exports.getRoutesByTruckId = async (req, res) => {
+  try {
+    const { truckId } = req.params;
+
+    // Step 1: Check if the truck has any assigned routes
+    const assignedRoutes = await CollectionRoute.find({ truck: truckId });
+
+    if (!assignedRoutes || assignedRoutes.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No routes found for this truck." });
+    }
+
+    const pendingRoute = await CollectionRoute.findOne({
+      truck: truckId,
+      deliveryStatus: "Pending", 
+    })
+      .populate({
+        path: "garbage",
+        populate: {
+          path: "garbageId",
+          populate: [
+            { path: "binId" },
+            { path: "createdBy", select: "-password" },
+          ],
+        },
+      })
+      .populate("truck");
+
+    // Step 3: Return the pending route (if any)
+    if (!pendingRoute) {
+      return res
+        .status(404)
+        .json({ message: "No pending deliveries for this truck." });
+    }
+
+    res.json(pendingRoute);
+  } catch (error) {
+    console.error("Error fetching route:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
