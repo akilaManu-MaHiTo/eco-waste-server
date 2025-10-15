@@ -12,18 +12,20 @@ exports.notifyPayment = async (req, res) => {
 
     const payment = await Payment.create(paymentData);
 
-    const requestComplete = await GarbageRequest.create({
-      garbageId: paymentData.custom_2,
-      price: paymentData.payhere_amount,
-      currency: paymentData.payhere_currency,
-      status: "Pending",
-    });
+    if (paymentData.status_code === 2) {
+      const requestComplete = await GarbageRequest.create({
+        garbageId: paymentData.custom_2,
+        price: paymentData.payhere_amount,
+        currency: paymentData.payhere_currency,
+        status: "Pending",
+      });
 
-    const updateStatus = await Garbage.findByIdAndUpdate(
-      paymentData.custom_2,
-      { status: "Requested" },
-      { new: true }
-    );
+      const updateStatus = await Garbage.findByIdAndUpdate(
+        paymentData.custom_2,
+        { status: "Requested" },
+        { new: true }
+      );
+    }
 
     console.log("Payment processed:", payment.payment_id);
     console.log("Garbage request created:", requestComplete._id);
