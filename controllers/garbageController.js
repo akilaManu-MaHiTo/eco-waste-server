@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Garbage = require("../models/Garbage");
 const User = require("../models/User");
-const Bin = require("../models/WasteBin"); 
+const Bin = require("../models/WasteBin");
 
 exports.createGarbage = async (req, res) => {
   try {
@@ -73,11 +73,66 @@ exports.getGarbage = async (req, res) => {
   }
 };
 
+exports.getTodayGarbage = async (req, res) => {
+  try {
+    const now = new Date();
 
+    const offsetMinutes = now.getTimezoneOffset();
+    const localNow = new Date(now.getTime() - offsetMinutes * 60000);
+
+    const startOfDayLocal = new Date(
+      localNow.getFullYear(),
+      localNow.getMonth(),
+      localNow.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    const endOfDayLocal = new Date(
+      localNow.getFullYear(),
+      localNow.getMonth(),
+      localNow.getDate(),
+      23,
+      59,
+      59,
+      999
+    );
+
+    const startOfDayUTC = new Date(
+      startOfDayLocal.getTime() + offsetMinutes * 60000
+    );
+    const endOfDayUTC = new Date(
+      endOfDayLocal.getTime() + offsetMinutes * 60000
+    );
+
+    const todayGarbage = await Garbage.find({
+      createdAt: { $gte: startOfDayUTC, $lt: endOfDayUTC },
+    })
+      .populate("binId")
+      .populate("createdBy")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      count: todayGarbage.length,
+      date: localNow.toDateString(),
+      garbage: todayGarbage,
+    });
+  } catch (error) {
+    console.error("Error fetching today's garbage:", error);
+    res
+      .status(500)
+      .json({ message: "Server Error: Unable to fetch today's garbage" });
+  }
+};
 exports.getCurrentSummary = async (req, res) => {
   try {
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
 
     const pipeline = [
       {
@@ -131,7 +186,6 @@ exports.getCurrentSummary = async (req, res) => {
     res.status(500).json({ message: "Server Error: Unable to build summary" });
   }
 };
-
 
 // exports.getGarbageTrend = async (req, res) => {
 //   try {
@@ -267,7 +321,9 @@ exports.getGarbageTrend = async (req, res) => {
     }
 
     if (!userIds || userIds.length === 0) {
-      return res.status(200).json({ startDate: null, endDate: null, trend: [] });
+      return res
+        .status(200)
+        .json({ startDate: null, endDate: null, trend: [] });
     }
 
     const first = await Garbage.findOne({ createdBy: { $in: userIds } })
@@ -276,7 +332,9 @@ exports.getGarbageTrend = async (req, res) => {
       .lean();
 
     if (!first) {
-      return res.status(200).json({ startDate: null, endDate: null, trend: [] });
+      return res
+        .status(200)
+        .json({ startDate: null, endDate: null, trend: [] });
     }
 
     const start = new Date(first.createdAt);
@@ -332,7 +390,9 @@ exports.getGarbageTrend = async (req, res) => {
           as: "categories.bin",
         },
       },
-      { $unwind: { path: "$categories.bin", preserveNullAndEmptyArrays: true } },
+      {
+        $unwind: { path: "$categories.bin", preserveNullAndEmptyArrays: true },
+      },
       {
         $group: {
           _id: "$date",
@@ -405,7 +465,8 @@ exports.getCurrentGarbageLevel = async (req, res) => {
     }
     if (category) filters.garbageCategory = category;
 
-    const DEFAULT_CAPACITY = parseFloat(process.env.DEFAULT_BIN_CAPACITY) || 100;
+    const DEFAULT_CAPACITY =
+      parseFloat(process.env.DEFAULT_BIN_CAPACITY) || 100;
 
     // Aggregation: sum waste per bin, lookup bin to get capacity/name
     const pipeline = [
@@ -433,7 +494,12 @@ exports.getCurrentGarbageLevel = async (req, res) => {
           totalWeight: 1,
           capacity: {
             $cond: [
-              { $or: [{ $eq: ["$bin.capacity", null] }, { $eq: ["$bin.capacity", 0] }] },
+              {
+                $or: [
+                  { $eq: ["$bin.capacity", null] },
+                  { $eq: ["$bin.capacity", 0] },
+                ],
+              },
               DEFAULT_CAPACITY,
               "$bin.capacity",
             ],
@@ -447,7 +513,13 @@ exports.getCurrentGarbageLevel = async (req, res) => {
             $min: [
               {
                 $multiply: [
-                  { $cond: [{ $eq: ["$capacity", 0] }, 0, { $divide: ["$totalWeight", "$capacity"] }] },
+                  {
+                    $cond: [
+                      { $eq: ["$capacity", 0] },
+                      0,
+                      { $divide: ["$totalWeight", "$capacity"] },
+                    ],
+                  },
                   100,
                 ],
               },
@@ -463,9 +535,14 @@ exports.getCurrentGarbageLevel = async (req, res) => {
 
     // compute overall percent: sum(totalWeight) / sum(capacity)
     const totalWeightAll = bins.reduce((s, b) => s + (b.totalWeight || 0), 0);
-    const totalCapacityAll = bins.reduce((s, b) => s + (b.capacity || DEFAULT_CAPACITY), 0);
+    const totalCapacityAll = bins.reduce(
+      (s, b) => s + (b.capacity || DEFAULT_CAPACITY),
+      0
+    );
     const overallPercent =
-      totalCapacityAll === 0 ? 0 : Math.min(((totalWeightAll / totalCapacityAll) * 100), 100);
+      totalCapacityAll === 0
+        ? 0
+        : Math.min((totalWeightAll / totalCapacityAll) * 100, 100);
 
     // Round numbers for client readability
     const formattedBins = bins.map((b) => ({
@@ -488,33 +565,5 @@ exports.getCurrentGarbageLevel = async (req, res) => {
   } catch (err) {
     console.error("Error computing garbage level:", err);
     return res.status(500).json({ error: "Server Error" });
-exports.getTodayGarbage = async (req, res) => {
-  try {
-    const now = new Date();
-
-    const offsetMinutes = now.getTimezoneOffset(); 
-    const localNow = new Date(now.getTime() - offsetMinutes * 60000);
-
-    const startOfDayLocal = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate(), 0, 0, 0, 0);
-    const endOfDayLocal = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate(), 23, 59, 59, 999);
-
-    const startOfDayUTC = new Date(startOfDayLocal.getTime() + offsetMinutes * 60000);
-    const endOfDayUTC = new Date(endOfDayLocal.getTime() + offsetMinutes * 60000);
-
-    const todayGarbage = await Garbage.find({
-      createdAt: { $gte: startOfDayUTC, $lt: endOfDayUTC }
-    })
-      .populate("binId")
-      .populate("createdBy")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      count: todayGarbage.length,
-      date: localNow.toDateString(),
-      garbage: todayGarbage
-    });
-  } catch (error) {
-    console.error("Error fetching today's garbage:", error);
-    res.status(500).json({ message: "Server Error: Unable to fetch today's garbage" });
   }
 };
