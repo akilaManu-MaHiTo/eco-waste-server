@@ -20,6 +20,10 @@ const garbageRequestSchema = new mongoose.Schema(
       default: "Pending",
       enum: ["Pending", "Approved", "Rejected", "Completed"],
     },
+    dateAndTime: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );

@@ -15,6 +15,7 @@ exports.notifyPayment = async (req, res) => {
     if (paymentData.status_code === '2') {
       const requestComplete = await GarbageRequest.create({
         garbageId: paymentData.custom_2,
+        dateAndTime: paymentData.custom_1,
         price: paymentData.payhere_amount,
         currency: paymentData.payhere_currency,
         status: "Pending",
