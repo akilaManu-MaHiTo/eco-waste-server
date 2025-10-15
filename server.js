@@ -9,6 +9,7 @@ const checkoutRoutes = require("./routes/checkoutRoutes");
 const wasteRoutes = require("./routes/wasteRoutes");
 const garbageRoutes = require("./routes/garbageRouter");
 const truckRoutes = require("./routes/truckRoutes");
+const garbageRequestRoutes = require("./routes/garbageCollectionRequestRoutes");
 
 const cors = require("cors");
 const app = express();
@@ -16,11 +17,13 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({
+app.use(
+  cors({
     origin: `${process.env.SERVER_ORIGIN}`,
     methods: ["POST", "GET", "PUT", "DELETE"],
-    credentials: true
-}));
+    credentials: true,
+  })
+);
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -30,7 +33,7 @@ app.use("/api/checkout", checkoutRoutes);
 app.use("/api/waste", wasteRoutes);
 app.use("/api/garbage", garbageRoutes);
 app.use("/api/truck", truckRoutes);
-
+app.use("/api/garbage-request", garbageRequestRoutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the backend API!");
