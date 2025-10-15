@@ -1,7 +1,7 @@
 const Payment = require("../models/Payhere");
 const User = require("../models/User");
 const Role = require("../models/Role");
-
+const GarbageRequest = require("../models/GarbageRequest");
 exports.notifyPayment = async (req, res) => {
   try {
     const paymentData = req.body;
@@ -11,18 +11,12 @@ exports.notifyPayment = async (req, res) => {
       return res.status(400).send("payment_id is missing");
     }
 
-    const payment = await Payment.findOneAndUpdate(
-      { payment_id: paymentData.payment_id },
-      paymentData,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    const userType = await Role.findOne({ userType: "Purchased-User" });
-    if (paymentData.custom_1) {
-      await User.findByIdAndUpdate(paymentData.custom_1, {
-        userType: userType._id,
-      });
-      console.log(`User ${paymentData.custom_1} upgraded to premium`);
-    }
+    const requestComplete = GarbageRequest.create({
+      garbageId: paymentData.custom_2,
+      price: paymentData.amount,
+      currency: paymentData.currency,
+      status: "Pending",
+    });
 
     console.log("Payment processed:", payment.payment_id);
 
