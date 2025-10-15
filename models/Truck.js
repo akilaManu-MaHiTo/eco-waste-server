@@ -25,9 +25,17 @@ const truckSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    lattitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
     assignedRoute: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Garbage",
+      ref: "GarbageRequest",
       default: null,
     },
   },

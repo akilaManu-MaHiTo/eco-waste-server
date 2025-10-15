@@ -4,7 +4,7 @@ const User = require("../models/User");
 // CREATE Truck
 exports.createTruck = async (req, res) => {
   try {
-    const { capacity, status, currentLocation, assignedRoute } = req.body;
+    const { capacity, status, currentLocation, assignedRoute, lattitude, longitude } = req.body;
     const userId = req.user.id;
 
     // Get the last created truck to determine next truckId
@@ -28,6 +28,8 @@ exports.createTruck = async (req, res) => {
       driver: userId,
       status,
       currentLocation,
+      lattitude,
+      longitude,
       assignedRoute,
     });
 
@@ -41,7 +43,7 @@ exports.createTruck = async (req, res) => {
 // get all trucks
 exports.getTrucks = async (req, res) => {
   try {
-    const trucks = await Truck.find().populate("driver", "name email").populate("assignedRoute");
+    const trucks = await Truck.find().populate("driver", "username email").populate("assignedRoute");
     res.status(200).json(trucks);
   } catch (err) {
     console.error(err);
@@ -64,7 +66,7 @@ exports.getTruckById = async (req, res) => {
       query = { truckId: id };
     }
 
-    const truck = await Truck.findOne(query).populate("driver", "name email").populate("assignedRoute");
+    const truck = await Truck.findOne(query).populate("driver", "username email").populate("assignedRoute");
 
     if (!truck) {
       return res.status(404).json({ error: "Truck not found" });
@@ -83,12 +85,12 @@ exports.updateTruck = async (req, res) => {
     const { id } = req.params;
     console.log("Truck ID:", id);
 
-    const { capacity, status, currentLocation } = req.body;
+    const { capacity, status, currentLocation, lattitude, longitude } = req.body;
 
     // ✅ Use an object as the filter
     const updatedTruck = await Truck.findOneAndUpdate(
       { _id: id }, // or { truckId: id } if you're using custom truckId
-      { capacity, status, currentLocation },
+      { capacity, status, currentLocation, lattitude, longitude },
       { new: true } // returns updated document
     );
 
