@@ -10,7 +10,7 @@ exports.notifyPayment = async (req, res) => {
     if (!paymentData.payment_id) {
       return res.status(400).send("payment_id is missing");
     }
-
+    const payment = Payment.create(paymentData);
     const requestComplete = GarbageRequest.create({
       garbageId: paymentData.custom_2,
       price: paymentData.amount,
