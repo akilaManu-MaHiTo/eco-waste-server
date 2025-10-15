@@ -41,7 +41,7 @@ exports.createTruck = async (req, res) => {
 // get all trucks
 exports.getTrucks = async (req, res) => {
   try {
-    const trucks = await Truck.find();
+    const trucks = await Truck.find().populate("driver", "name email").populate("assignedRoute");
     res.status(200).json(trucks);
   } catch (err) {
     console.error(err);
@@ -64,7 +64,7 @@ exports.getTruckById = async (req, res) => {
       query = { truckId: id };
     }
 
-    const truck = await Truck.findOne(query);
+    const truck = await Truck.findOne(query).populate("driver", "name email").populate("assignedRoute");
 
     if (!truck) {
       return res.status(404).json({ error: "Truck not found" });
