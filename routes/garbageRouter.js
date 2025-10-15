@@ -4,6 +4,7 @@ const { protect } = require("../controllers/authController");
 const {
   createGarbage,
   getGarbage,
+  getTodayGarbage,
   updateGarbage,
   deleteGarbage,
   getCurrentSummary,
@@ -13,6 +14,7 @@ const {
 
 router.post("/", protect, createGarbage);
 router.get("/", protect, getGarbage);
+router.get("/today", protect, getTodayGarbage);
 router.put("/:id", protect, updateGarbage);
 router.delete("/:id", protect, deleteGarbage);
 router.get("/summary", protect, getCurrentSummary);

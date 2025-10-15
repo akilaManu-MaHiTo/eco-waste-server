@@ -488,5 +488,33 @@ exports.getCurrentGarbageLevel = async (req, res) => {
   } catch (err) {
     console.error("Error computing garbage level:", err);
     return res.status(500).json({ error: "Server Error" });
+exports.getTodayGarbage = async (req, res) => {
+  try {
+    const now = new Date();
+
+    const offsetMinutes = now.getTimezoneOffset(); 
+    const localNow = new Date(now.getTime() - offsetMinutes * 60000);
+
+    const startOfDayLocal = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate(), 0, 0, 0, 0);
+    const endOfDayLocal = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate(), 23, 59, 59, 999);
+
+    const startOfDayUTC = new Date(startOfDayLocal.getTime() + offsetMinutes * 60000);
+    const endOfDayUTC = new Date(endOfDayLocal.getTime() + offsetMinutes * 60000);
+
+    const todayGarbage = await Garbage.find({
+      createdAt: { $gte: startOfDayUTC, $lt: endOfDayUTC }
+    })
+      .populate("binId")
+      .populate("createdBy")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      count: todayGarbage.length,
+      date: localNow.toDateString(),
+      garbage: todayGarbage
+    });
+  } catch (error) {
+    console.error("Error fetching today's garbage:", error);
+    res.status(500).json({ message: "Server Error: Unable to fetch today's garbage" });
   }
 };
