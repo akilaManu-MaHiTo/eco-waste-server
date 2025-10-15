@@ -1,5 +1,6 @@
 const Payment = require("../models/Payhere");
 const GarbageRequest = require("../models/GarbageRequest");
+const Garbage = require("../models/Garbage");
 exports.notifyPayment = async (req, res) => {
   try {
     const paymentData = req.body;
@@ -17,6 +18,12 @@ exports.notifyPayment = async (req, res) => {
       currency: paymentData.payhere_currency,
       status: "Pending",
     });
+
+    const updateStatus = await Garbage.findByIdAndUpdate(
+      paymentData.custom_2,
+      { status: "Requested" },
+      { new: true }
+    );
 
     console.log("Payment processed:", payment.payment_id);
     console.log("Garbage request created:", requestComplete._id);
