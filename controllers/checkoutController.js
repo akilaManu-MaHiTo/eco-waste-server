@@ -1,6 +1,4 @@
 const Payment = require("../models/Payhere");
-const User = require("../models/User");
-const Role = require("../models/Role");
 const GarbageRequest = require("../models/GarbageRequest");
 exports.notifyPayment = async (req, res) => {
   try {
@@ -10,8 +8,10 @@ exports.notifyPayment = async (req, res) => {
     if (!paymentData.payment_id) {
       return res.status(400).send("payment_id is missing");
     }
-    const payment = Payment.create(paymentData);
-    const requestComplete = GarbageRequest.create({
+
+    const payment = await Payment.create(paymentData);
+
+    const requestComplete = await GarbageRequest.create({
       garbageId: paymentData.custom_2,
       price: paymentData.payhere_amount,
       currency: paymentData.payhere_currency,
@@ -19,10 +19,11 @@ exports.notifyPayment = async (req, res) => {
     });
 
     console.log("Payment processed:", payment.payment_id);
+    console.log("Garbage request created:", requestComplete._id);
 
     res.status(200).send("OK");
   } catch (error) {
-    console.error(error);
+    console.error("Error saving payment:", error);
     res.status(500).send("Server Error");
   }
 };
