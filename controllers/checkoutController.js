@@ -12,7 +12,7 @@ exports.notifyPayment = async (req, res) => {
 
     const payment = await Payment.create(paymentData);
 
-    if (paymentData.status_code === 2) {
+    if (paymentData.status_code === '2') {
       const requestComplete = await GarbageRequest.create({
         garbageId: paymentData.custom_2,
         price: paymentData.payhere_amount,
