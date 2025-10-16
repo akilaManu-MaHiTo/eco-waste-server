@@ -91,38 +91,24 @@ exports.getGarbage = async (req, res) => {
 
 exports.getTodayGarbage = async (req, res) => {
   try {
+    const userId = req.user.id;
     const now = new Date();
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+    const startOfDayLocal = new Date(now);
+    startOfDayLocal.setHours(0, 0, 0, 0);
 
-    const todayGarbage = await Garbage.aggregate([
-      {
-        $match: {
-          status: "Pending",
-          createdBy: new mongoose.Types.ObjectId(req.user.id),
-          createdAt: { $gte: startOfDay, $lt: endOfDay },
-        },
-      },
-      {
-        $group: {
-          _id: "$binId",
-          totalWasteWeight: { $sum: "$wasteWeight" },
-          count: { $sum: 1 },
-          items: { $push: "$$ROOT" },
-        },
-      },
-      {
-        $lookup: {
-          from: "wastebins",
-          localField: "_id",
-          foreignField: "_id",
-          as: "binDetails",
-        },
-      },
-      {
-        $unwind: "$binDetails",
-      },
-    ]);
+    const endOfDayLocal = new Date(now);
+    endOfDayLocal.setHours(23, 59, 59, 999);
+
+    const startOfDayUTC = new Date(startOfDayLocal.toISOString());
+    const endOfDayUTC = new Date(endOfDayLocal.toISOString());
+
+    const todayGarbage = await Garbage.find({
+      createdBy: userId,
+      createdAt: { $gte: startOfDayUTC, $lte: endOfDayUTC },
+    })
+      .populate("binId")
+      .populate("createdBy")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       count: todayGarbage.length,
@@ -131,9 +117,9 @@ exports.getTodayGarbage = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching today's garbage:", error);
-    res
-      .status(500)
-      .json({ message: "Server Error: Unable to fetch today's garbage" });
+    res.status(500).json({
+      message: "Server Error: Unable to fetch today's garbage",
+    });
   }
 };
 
