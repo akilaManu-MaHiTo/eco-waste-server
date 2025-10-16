@@ -92,46 +92,41 @@ exports.getGarbage = async (req, res) => {
 exports.getTodayGarbage = async (req, res) => {
   try {
     const now = new Date();
+    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(now.setHours(23, 59, 59, 999));
 
-    const offsetMinutes = now.getTimezoneOffset();
-    const localNow = new Date(now.getTime() - offsetMinutes * 60000);
-
-    const startOfDayLocal = new Date(
-      localNow.getFullYear(),
-      localNow.getMonth(),
-      localNow.getDate(),
-      0,
-      0,
-      0,
-      0
-    );
-    const endOfDayLocal = new Date(
-      localNow.getFullYear(),
-      localNow.getMonth(),
-      localNow.getDate(),
-      23,
-      59,
-      59,
-      999
-    );
-
-    const startOfDayUTC = new Date(
-      startOfDayLocal.getTime() + offsetMinutes * 60000
-    );
-    const endOfDayUTC = new Date(
-      endOfDayLocal.getTime() + offsetMinutes * 60000
-    );
-
-    const todayGarbage = await Garbage.find({
-      createdAt: { $gte: startOfDayUTC, $lt: endOfDayUTC },
-    })
-      .populate("binId")
-      .populate("createdBy")
-      .sort({ createdAt: -1 });
+    const todayGarbage = await Garbage.aggregate([
+      {
+        $match: {
+          status: "Pending",
+          createdBy: new mongoose.Types.ObjectId(req.user.id),
+          createdAt: { $gte: startOfDay, $lt: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: "$binId",
+          totalWasteWeight: { $sum: "$wasteWeight" },
+          count: { $sum: 1 },
+          items: { $push: "$$ROOT" },
+        },
+      },
+      {
+        $lookup: {
+          from: "wastebins",
+          localField: "_id",
+          foreignField: "_id",
+          as: "binDetails",
+        },
+      },
+      {
+        $unwind: "$binDetails",
+      },
+    ]);
 
     res.status(200).json({
       count: todayGarbage.length,
-      date: localNow.toDateString(),
+      date: now.toDateString(),
       garbage: todayGarbage,
     });
   } catch (error) {
@@ -289,7 +284,9 @@ exports.getCurrentSummary = async (req, res) => {
       totals: {
         totalWeight: Math.round(totals.totalWeight * 100) / 100,
         count: totals.count,
-        lastDepositAt: totals.lastDepositAt ? totals.lastDepositAt.toISOString() : null,
+        lastDepositAt: totals.lastDepositAt
+          ? totals.lastDepositAt.toISOString()
+          : null,
       },
       summary: formatted,
     });
@@ -298,7 +295,6 @@ exports.getCurrentSummary = async (req, res) => {
     res.status(500).json({ message: "Server Error: Unable to build summary" });
   }
 };
-
 
 exports.getGarbageTrend = async (req, res) => {
   try {
