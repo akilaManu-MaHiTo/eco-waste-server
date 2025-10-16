@@ -13,6 +13,8 @@ const wasteBinSchema = new mongoose.Schema(
       required: false,
       default: "warehouse", 
     },
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
     currentWasteLevel: {
       type: Number,
       required: false,
@@ -36,4 +38,3 @@ const wasteBinSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("WasteBin", wasteBinSchema);
-

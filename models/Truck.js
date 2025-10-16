@@ -11,6 +11,10 @@ const truckSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    currentWasteLoad: {
+      type: Number,
+      default: 0,
+    },
     driver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -25,9 +29,17 @@ const truckSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
     assignedRoute: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Garbage",
+      ref: "GarbageRequest",
       default: null,
     },
   },

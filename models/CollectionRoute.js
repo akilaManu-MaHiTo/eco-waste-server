@@ -14,6 +14,11 @@ const collectionRouteSchema = new mongoose.Schema(
       ref: "Truck",
       required: true,
     },
+    deliveryStatus: {
+      type: String,
+      enum: ["Pending", "In Progress", "Completed"],
+      default: "Pending",
+    },
   },
   { timestamps: true }
 );
