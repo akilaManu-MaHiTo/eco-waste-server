@@ -145,3 +145,24 @@ exports.deleteWasteBin = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+// update the waste bin level 0
+exports.resetWasteBinLevel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Reset bin ID: " + id);
+
+    const updatedWasteBin = await WasteBin.findByIdAndUpdate(
+      id,
+      { currentWasteLevel: 0 },
+      { new: true }
+    );
+    if (!updatedWasteBin) {
+      return res.status(404).json({ error: "Waste bin not found" });
+    }
+    res.status(200).json(updatedWasteBin);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+};

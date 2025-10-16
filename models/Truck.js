@@ -11,6 +11,10 @@ const truckSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    currentWasteLoad: {
+      type: Number,
+      default: 0,
+    },
     driver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
