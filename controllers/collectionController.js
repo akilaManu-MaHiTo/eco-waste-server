@@ -166,6 +166,38 @@ exports.getPendingRoutes = async (req, res) => {
   }
 };
 
+// get only completed route
+exports.getCompletedRoutes = async (req, res) => {
+  try {
+    const pendingRoute = await CollectionRoute.find({
+      deliveryStatus: "Completed",
+    })
+      .populate({
+        path: "garbage",
+        populate: {
+          path: "garbageId",
+          populate: [
+            { path: "binId" },
+            { path: "createdBy", select: "-password" },
+          ],
+        },
+      })
+      .populate("truck");
+
+    // Step 3: Return the pending route (if any)
+    if (!pendingRoute) {
+      return res
+        .status(404)
+        .json({ message: "No pending deliveries for this truck." });
+    }
+
+    res.json(pendingRoute);
+  } catch (error) {
+    console.error("Error fetching route:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // get In progress route
 exports.getInProgressRoutes = async (req, res) => {
 try {
