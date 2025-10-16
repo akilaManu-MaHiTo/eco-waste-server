@@ -57,7 +57,7 @@ exports.notifyPaymentBin = async (req, res) => {
     if (paymentData.status_code === "2") {
       const [latitude, longitude] = paymentData.custom_1.split("-");
       const [binId, userId] = paymentData.custom_2.split("-");
-      const updatedRequest = await GarbageCollectionRequest.findByIdAndUpdate(
+      const updatedRequest = await WasteBin.findByIdAndUpdate(
         paymentData.binId,
         {
           status: "Purchased",
