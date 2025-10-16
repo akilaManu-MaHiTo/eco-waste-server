@@ -125,242 +125,239 @@ exports.getTodayGarbage = async (req, res) => {
       .json({ message: "Server Error: Unable to fetch today's garbage" });
   }
 };
+
 exports.getCurrentSummary = async (req, res) => {
   try {
-    const now = new Date();
-    const startOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
 
-    const pipeline = [
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      return res.status(400).json({ message: "Invalid user identifier" });
+    }
+
+    const userIdStr = req.user.id;
+    const userObjectId = new mongoose.Types.ObjectId(userIdStr);
+
+    const { startDate, endDate, category } = req.query;
+
+    const userDoc = await User.findById(userObjectId)
+      .select("username email")
+      .lean();
+
+    if (!userDoc) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    let rangeStart;
+    if (startDate) {
+      const parsedStart = new Date(startDate);
+      if (Number.isNaN(parsedStart.getTime())) {
+        return res.status(400).json({ message: "Invalid startDate" });
+      }
+      parsedStart.setHours(0, 0, 0, 0);
+      rangeStart = parsedStart;
+    } else {
+      const earliest = await Garbage.findOne({
+        $or: [{ createdBy: userObjectId }, { createdBy: userIdStr }],
+      })
+        .sort({ createdAt: 1 })
+        .select("createdAt")
+        .lean();
+
+      if (!earliest) {
+        return res.status(200).json({
+          user: {
+            _id: userDoc._id,
+            name: userDoc.username,
+            email: userDoc.email,
+          },
+          range: null,
+          totals: { totalWeight: 0, count: 0, lastDepositAt: null },
+          summary: [],
+        });
+      }
+
+      rangeStart = new Date(earliest.createdAt);
+      rangeStart.setHours(0, 0, 0, 0);
+    }
+
+    let rangeEnd;
+    if (endDate) {
+      const parsedEnd = new Date(endDate);
+      if (Number.isNaN(parsedEnd.getTime())) {
+        return res.status(400).json({ message: "Invalid endDate" });
+      }
+      parsedEnd.setHours(23, 59, 59, 999);
+      rangeEnd = parsedEnd;
+    } else {
+      rangeEnd = new Date();
+    }
+
+    if (rangeEnd < rangeStart) {
+      return res
+        .status(400)
+        .json({ message: "endDate must be on or after startDate" });
+    }
+
+    const matchConditions = [
+      { createdAt: { $gte: rangeStart, $lte: rangeEnd } },
       {
-        $match: {
-          createdAt: { $gte: startOfDay, $lte: now },
-        },
+        $or: [
+          { createdBy: userObjectId },
+          { $expr: { $eq: [{ $toString: "$createdBy" }, userIdStr] } },
+        ],
       },
     ];
 
-    if (req.query.mine === "true") {
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      pipeline.unshift({
-        $match: { createdBy: mongoose.Types.ObjectId(req.user.id) },
-      });
+    if (category) {
+      matchConditions.push({ garbageCategory: category });
     }
 
-    pipeline.push(
+    const summary = await Garbage.aggregate([
+      { $match: { $and: matchConditions } },
       {
         $group: {
-          _id: { user: "$createdBy", category: "$garbageCategory" },
+          _id: "$garbageCategory",
           totalWeight: { $sum: "$wasteWeight" },
           count: { $sum: 1 },
+          lastDepositAt: { $max: "$createdAt" },
         },
       },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id.user",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 0,
-          user: { _id: "$user._id", name: "$user.name", email: "$user.email" },
-          category: "$_id.category",
+          category: "$_id",
           totalWeight: 1,
           count: 1,
+          lastDepositAt: 1,
         },
-      }
+      },
+      { $sort: { category: 1 } },
+    ]);
+
+    const totals = summary.reduce(
+      (acc, entry) => {
+        acc.totalWeight += entry.totalWeight || 0;
+        acc.count += entry.count || 0;
+        if (
+          entry.lastDepositAt &&
+          (!acc.lastDepositAt || entry.lastDepositAt > acc.lastDepositAt)
+        ) {
+          acc.lastDepositAt = entry.lastDepositAt;
+        }
+        return acc;
+      },
+      { totalWeight: 0, count: 0, lastDepositAt: null }
     );
 
-    const summary = await Garbage.aggregate(pipeline);
-    res.status(200).json(summary);
+    const formatted = summary.map((entry) => ({
+      category: entry.category,
+      totalWeight: Math.round((entry.totalWeight || 0) * 100) / 100,
+      count: entry.count || 0,
+      lastDepositAt: entry.lastDepositAt
+        ? entry.lastDepositAt.toISOString()
+        : null,
+    }));
+
+    return res.status(200).json({
+      user: {
+        _id: userDoc._id,
+        name: userDoc.username,
+        email: userDoc.email,
+      },
+      range: {
+        start: rangeStart.toISOString(),
+        end: rangeEnd.toISOString(),
+      },
+      totals: {
+        totalWeight: Math.round(totals.totalWeight * 100) / 100,
+        count: totals.count,
+        lastDepositAt: totals.lastDepositAt ? totals.lastDepositAt.toISOString() : null,
+      },
+      summary: formatted,
+    });
   } catch (err) {
     console.error("Error building summary:", err);
     res.status(500).json({ message: "Server Error: Unable to build summary" });
   }
 };
 
-// exports.getGarbageTrend = async (req, res) => {
-//   try {
-//     // Accept either:
-//     // - userIds=<id,id,...>
-//     // - role=<role>
-//     // If none provided, fall back to users that have garbage records.
-//     const { userIds: userIdsCsv, role } = req.query;
-//     let userIds = [];
 
-//     if (userIdsCsv) {
-//       userIds = userIdsCsv
-//         .split(",")
-//         .map((s) => s.trim())
-//         .filter(Boolean)
-//         .map((id) => mongoose.Types.ObjectId(id));
-//     } else if (role) {
-//       const users = await User.find({ role }).select("_id").lean();
-//       userIds = users.map((u) => u._id);
-//     } else {
-//       // fallback: use users that actually have garbage records
-//       const ids = await Garbage.distinct("createdBy");
-//       userIds = ids || [];
-//     }
-
-//     // If still no userIds, return empty result
-//     if (!userIds || userIds.length === 0) {
-//       return res.status(200).json({ startDate: null, endDate: null, trend: [] });
-//     }
-
-//     // find earliest garbage record for these users
-//     const first = await Garbage.findOne({ createdBy: { $in: userIds } })
-//       .sort({ createdAt: 1 })
-//       .select("createdAt")
-//       .lean();
-
-//     if (!first) {
-//       return res.status(200).json({ startDate: null, endDate: null, trend: [] });
-//     }
-
-//     const start = new Date(first.createdAt);
-//     start.setHours(0, 0, 0, 0);
-//     const end = new Date();
-//     end.setHours(23, 59, 59, 999);
-
-//     // aggregate daily totals per category (YYYY-MM-DD)
-//     const pipeline = [
-//       {
-//         $match: {
-//           createdBy: { $in: userIds },
-//           createdAt: { $gte: start, $lte: end },
-//         },
-//       },
-//       {
-//         $project: {
-//           date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-//           garbageCategory: 1,
-//           wasteWeight: 1,
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: { date: "$date", category: "$garbageCategory" },
-//           totalWeight: { $sum: "$wasteWeight" },
-//           count: { $sum: 1 },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.date",
-//           categories: {
-//             $push: {
-//               category: "$_id.category",
-//               totalWeight: "$totalWeight",
-//               count: "$count",
-//             },
-//           },
-//         },
-//       },
-//       { $project: { _id: 0, date: "$_id", categories: 1 } },
-//       { $sort: { date: 1 } },
-//     ];
-
-//     const aggResult = await Garbage.aggregate(pipeline);
-
-//     // build map for quick lookup
-//     const trendMap = {};
-//     aggResult.forEach((d) => {
-//       trendMap[d.date] = d.categories;
-//     });
-
-//     // helper: list all dates from start..end as YYYY-MM-DD
-//     const dates = [];
-//     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-//       const iso = d.toISOString().split("T")[0];
-//       dates.push(iso);
-//     }
-
-//     const trend = dates.map((date) => ({
-//       date,
-//       categories: trendMap[date] || [],
-//     }));
-
-//     return res.status(200).json({
-//       startDate: start.toISOString().split("T")[0],
-//       endDate: end.toISOString().split("T")[0],
-//       trend,
-//     });
-//   } catch (err) {
-//     console.error("Error building trend:", err);
-//     return res.status(500).json({ error: "Server Error" });
-//   }
-// };
-
-// ...existing code...
 exports.getGarbageTrend = async (req, res) => {
   try {
-    const { userIds: userIdsCsv, role } = req.query;
-    let userIds = [];
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
 
-    if (userIdsCsv) {
-      userIds = userIdsCsv
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((id) => mongoose.Types.ObjectId(id));
-    } else if (role) {
-      const users = await User.find({ role }).select("_id").lean();
-      userIds = users.map((u) => u._id);
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      return res.status(400).json({ message: "Invalid user identifier" });
+    }
+
+    const userIdStr = req.user.id;
+    const userObjectId = new mongoose.Types.ObjectId(userIdStr);
+    const { startDate, endDate, category } = req.query;
+
+    let rangeEnd;
+    if (endDate) {
+      const parsedEnd = new Date(endDate);
+      if (Number.isNaN(parsedEnd.getTime())) {
+        return res.status(400).json({ message: "Invalid endDate" });
+      }
+      parsedEnd.setHours(23, 59, 59, 999);
+      rangeEnd = parsedEnd;
     } else {
-      const ids = await Garbage.distinct("createdBy");
-      userIds = ids || [];
+      rangeEnd = new Date();
+      rangeEnd.setHours(23, 59, 59, 999);
     }
 
-    if (!userIds || userIds.length === 0) {
+    let rangeStart;
+    if (startDate) {
+      const parsedStart = new Date(startDate);
+      if (Number.isNaN(parsedStart.getTime())) {
+        return res.status(400).json({ message: "Invalid startDate" });
+      }
+      parsedStart.setHours(0, 0, 0, 0);
+      rangeStart = parsedStart;
+    } else {
+      rangeStart = new Date(rangeEnd);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeStart.setDate(rangeStart.getDate() - 29);
+    }
+
+    if (rangeEnd < rangeStart) {
       return res
-        .status(200)
-        .json({ startDate: null, endDate: null, trend: [] });
+        .status(400)
+        .json({ message: "endDate must be on or after startDate" });
     }
 
-    const first = await Garbage.findOne({ createdBy: { $in: userIds } })
-      .sort({ createdAt: 1 })
-      .select("createdAt")
-      .lean();
-
-    if (!first) {
-      return res
-        .status(200)
-        .json({ startDate: null, endDate: null, trend: [] });
-    }
-
-    const start = new Date(first.createdAt);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-
-    const pipeline = [
+    const matchConditions = [
+      { createdAt: { $gte: rangeStart, $lte: rangeEnd } },
       {
-        $match: {
-          createdBy: { $in: userIds },
-          createdAt: { $gte: start, $lte: end },
-        },
+        $or: [
+          { createdBy: userObjectId },
+          { $expr: { $eq: [{ $toString: "$createdBy" }, userIdStr] } },
+        ],
       },
+    ];
+
+    if (category) {
+      matchConditions.push({ garbageCategory: category });
+    }
+
+    const aggregated = await Garbage.aggregate([
+      { $match: { $and: matchConditions } },
       {
         $project: {
           date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          garbageCategory: 1,
-          wasteWeight: 1,
-          binId: 1,
+          category: "$garbageCategory",
+          weight: "$wasteWeight",
         },
       },
       {
         $group: {
-          _id: { date: "$date", category: "$garbageCategory", binId: "$binId" },
-          totalWeight: { $sum: "$wasteWeight" },
+          _id: { date: "$date", category: "$category" },
+          totalWeight: { $sum: "$weight" },
           count: { $sum: 1 },
         },
       },
@@ -370,7 +367,6 @@ exports.getGarbageTrend = async (req, res) => {
           categories: {
             $push: {
               category: "$_id.category",
-              binId: "$_id.binId",
               totalWeight: "$totalWeight",
               count: "$count",
             },
@@ -379,59 +375,52 @@ exports.getGarbageTrend = async (req, res) => {
       },
       { $project: { _id: 0, date: "$_id", categories: 1 } },
       { $sort: { date: 1 } },
+    ]);
 
-      // optional: populate bin details from 'bins' collection if you have one
-      { $unwind: { path: "$categories", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "bins", // adjust collection name if different
-          localField: "categories.binId",
-          foreignField: "_id",
-          as: "categories.bin",
-        },
-      },
-      {
-        $unwind: { path: "$categories.bin", preserveNullAndEmptyArrays: true },
-      },
-      {
-        $group: {
-          _id: "$date",
-          categories: { $push: "$categories" },
-        },
-      },
-      { $project: { _id: 0, date: "$_id", categories: 1 } },
-      { $sort: { date: 1 } },
-    ];
+    const trendMap = new Map();
+    aggregated.forEach((entry) => {
+      const categories = entry.categories.map((c) => ({
+        category: c.category,
+        totalWeight: Math.round((c.totalWeight || 0) * 100) / 100,
+        count: c.count || 0,
+      }));
 
-    const aggResult = await Garbage.aggregate(pipeline);
+      const totalWeight = categories.reduce(
+        (sum, c) => sum + (c.totalWeight || 0),
+        0
+      );
+      const count = categories.reduce((sum, c) => sum + (c.count || 0), 0);
 
-    const trendMap = {};
-    aggResult.forEach((d) => {
-      trendMap[d.date] = d.categories.map((c) => {
-        // convert bin object id to string if not populated; keep populated bin doc if available
-        const binInfo = c.bin ? c.bin : c.binId;
-        return {
-          category: c.category,
-          bin: binInfo,
-          totalWeight: c.totalWeight,
-          count: c.count,
-        };
+      trendMap.set(entry.date, {
+        categories,
+        totalWeight: Math.round(totalWeight * 100) / 100,
+        count,
       });
     });
 
-    const dates = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(d.toISOString().split("T")[0]);
+    const trend = [];
+    for (let cursor = new Date(rangeStart); cursor <= rangeEnd; ) {
+      const isoDate = cursor.toISOString().split("T")[0];
+      const dayData = trendMap.get(isoDate);
+
+      if (dayData) {
+        trend.push({ date: isoDate, ...dayData });
+      } else {
+        trend.push({
+          date: isoDate,
+          categories: [],
+          totalWeight: 0,
+          count: 0,
+        });
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+      cursor.setHours(0, 0, 0, 0);
     }
 
-    const trend = dates.map((date) => ({
-      date,
-      categories: trendMap[date] || [],
-    }));
-
     return res.status(200).json({
-      startDate: start.toISOString().split("T")[0],
-      endDate: end.toISOString().split("T")[0],
+      startDate: rangeStart.toISOString().split("T")[0],
+      endDate: rangeEnd.toISOString().split("T")[0],
       trend,
     });
   } catch (err) {
@@ -442,14 +431,6 @@ exports.getGarbageTrend = async (req, res) => {
 
 /**
  * Get current garbage level as percentage.
- * - Optional query params:
- *   - userId (filter by user)
- *   - category (filter by garbageCategory)
- * - Returns per-bin totals (totalWeight / capacity) and overall percent.
- *
- * Notes:
- * - Uses bin.capacity if present; falls back to DEFAULT_BIN_CAPACITY env (kg) or 100 kg.
- * - Caps percent at 100%.
  */
 exports.getCurrentGarbageLevel = async (req, res) => {
   try {
