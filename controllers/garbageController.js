@@ -7,12 +7,28 @@ exports.createGarbage = async (req, res) => {
   try {
     const { wasteWeight, binId, garbageCategory } = req.body;
     const userId = req.user.id;
+    const ownerBinUsage = await Bin.findById(binId);
+    if (!ownerBinUsage) {
+      return res.status(404).json({ message: "Bin not found" });
+    }
+    const allGarbage = await Garbage.find({ binId, status: "Pending" });
+    const totalWeight = allGarbage.reduce((sum, g) => sum + g.wasteWeight, 0);
+
+    const threshold = Number(ownerBinUsage.thresholdLevel);
+    const newTotal = totalWeight + Number(wasteWeight);
+    if (newTotal > threshold) {
+      return res.status(400).json({
+        message: "Bin capacity exceeded. Please use another bin.",
+      });
+    }
+
     const garbage = await Garbage.create({
-      wasteWeight,
-      binId: binId._id,
+      wasteWeight: Number(wasteWeight),
+      binId,
       garbageCategory,
       createdBy: userId,
     });
+
     res.status(201).json(garbage);
   } catch (err) {
     console.error(err);

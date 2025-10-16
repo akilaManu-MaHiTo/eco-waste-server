@@ -26,7 +26,7 @@ exports.createWasteBin = async (req, res) => {
     const newWasteBin = await WasteBin.create({
       binId,
       binType,
-      thresholdLevel
+      thresholdLevel,
     });
 
     res.status(201).json(newWasteBin);
@@ -83,10 +83,11 @@ exports.getWasteBinById = async (req, res) => {
 // UPDATE WasteBin specifcly by binId
 exports.updateWasteBin = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     console.log("bin ID: " + id);
 
-    const { location, currentWasteLevel, thresholdLevel, availability } = req.body;
+    const { location, currentWasteLevel, thresholdLevel, availability } =
+      req.body;
 
     // Permission check
     const userId = req.user.id;
@@ -116,7 +117,6 @@ exports.updateWasteBin = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
 
 // DELETE WasteBin
 exports.deleteWasteBin = async (req, res) => {
@@ -161,6 +161,21 @@ exports.resetWasteBinLevel = async (req, res) => {
       return res.status(404).json({ error: "Waste bin not found" });
     }
     res.status(200).json(updatedWasteBin);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.getWasteBinsByOwner = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const category = req.params.category;
+    const bins = await WasteBin.find({
+      owner: userId,
+      binType: category,
+    });
+    res.status(200).json(bins);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
