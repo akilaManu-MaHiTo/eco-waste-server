@@ -9,11 +9,13 @@ const {
   getRevenueByCategory,
   getMonthlyRequests,
   getDailyRequestsByDateAndTime,
+  getGarbageCollectionRequestApproved,
 } = require("../controllers/garbageCollectionRequestController");
 const router = express.Router();
 
 // Server-to-server notification endpoint
 router.get("/", protect, getGarbageCollectionRequest);
+router.get("/approved", protect, getGarbageCollectionRequestApproved);
 router.get("/garbage-by-category", getGarbageByCategory);
 router.get("/requests-by-status", getRequestsByStatus);
 router.get("/waste-by-bin-type", getWasteByBinType);
