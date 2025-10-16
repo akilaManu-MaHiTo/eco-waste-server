@@ -1,6 +1,3 @@
-const BinCollectionRequest = require("../models/BinCollectionRequest");
-const mongoose = require('mongoose');
-
 exports.createBinCollectionRequest = async (req, res) => {
   try {
     const {
@@ -13,6 +10,7 @@ exports.createBinCollectionRequest = async (req, res) => {
       orderId,
       amount,
       paymentStatus,
+      status, 
     } = req.body;
 
     if (
@@ -42,6 +40,7 @@ exports.createBinCollectionRequest = async (req, res) => {
       orderId,
       amount,
       paymentStatus,
+      status: status || "pending",
     });
 
     res.status(201).json({

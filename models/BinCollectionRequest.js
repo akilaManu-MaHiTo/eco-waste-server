@@ -11,6 +11,10 @@ const binCollectionRequestSchema = new mongoose.Schema(
     orderId: { type: String, required: true, unique: true },
     amount: { type: Number, required: true },
     paymentStatus: { type: String, required: true },
+    status: { type: String,
+      enum: ["pending", "dispatched", "completed"],
+      default: "pending",
+    },
   },
   { timestamps: true }
 );
