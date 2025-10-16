@@ -40,15 +40,9 @@ exports.createWasteBin = async (req, res) => {
 exports.getWasteBins = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findById(userId);
-    const userRole = await Role.findById(user.userType);
-    if (!userRole.permissionObject.get("ADMIN_BIN_MNG_VIEW")) {
-      return res.status(403).json({
-        error: "Forbidden: You don't have permission to view waste bins",
-      });
-    }
-
-    const bins = await WasteBin.find();
+    const bins = await WasteBin.find({
+      status: "NotPurchased",
+    });
     res.status(200).json(bins);
   } catch (err) {
     console.error(err);

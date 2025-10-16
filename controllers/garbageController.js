@@ -77,7 +77,10 @@ exports.deleteGarbage = async (req, res) => {
 
 exports.getGarbage = async (req, res) => {
   try {
-    const garbage = await Garbage.find()
+    const userId = req.user.id;
+    const garbage = await Garbage.find({
+      createdBy: userId,
+    })
       .populate("binId")
       .populate("createdBy");
     res.status(200).json(garbage);
