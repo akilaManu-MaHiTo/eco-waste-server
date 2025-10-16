@@ -58,7 +58,7 @@ exports.notifyPaymentBin = async (req, res) => {
       const [latitude, longitude] = paymentData.custom_1.split("-");
       const [binId, userId] = paymentData.custom_2.split("-");
       const updatedRequest = await WasteBin.findByIdAndUpdate(
-        paymentData.binId,
+        binId,
         {
           status: "Purchased",
           latitude: parseFloat(latitude),
@@ -68,7 +68,7 @@ exports.notifyPaymentBin = async (req, res) => {
         },
         { new: true }
       );
-      console.log("Garbage request updated:", updatedRequest?._id);
+      console.log("Bin updated:", updatedRequest?._id);
     } else {
       console.log(
         "Payment not successful, status code:",
