@@ -3,7 +3,6 @@ const Garbage = require("../models/Garbage");
 const Truck = require("../models/Truck");
 const User = require("../models/User");
 
-// CREATE Truck
 exports.createTruck = async (req, res) => {
   try {
     const {
@@ -15,8 +14,6 @@ exports.createTruck = async (req, res) => {
       longitude,
     } = req.body;
     const userId = req.user.id;
-
-    // Get the last created truck to determine next truckId
     const lastTruck = await Truck.findOne().sort({ createdAt: -1 }); // Sort by creation date
     let nextTruckNumber = 1;
 
@@ -26,11 +23,7 @@ exports.createTruck = async (req, res) => {
         nextTruckNumber = parseInt(match[1]) + 1;
       }
     }
-
-    // Format the truck ID (e.g., TRUCK001)
     const truckId = `TRUCK${String(nextTruckNumber).padStart(3, "0")}`;
-
-    // Create new truck
     const newTruck = await Truck.create({
       truckId,
       capacity,
@@ -50,7 +43,6 @@ exports.createTruck = async (req, res) => {
   }
 };
 
-// get all trucks
 exports.getTrucks = async (req, res) => {
   try {
     const trucks = await Truck.find()
@@ -68,16 +60,12 @@ const mongoose = require("mongoose");
 exports.getTruckById = async (req, res) => {
   try {
     const { id } = req.params;
-
     let query = {};
-
-    // Check if 'id' is a valid ObjectId
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { truckId: id }] };
     } else {
       query = { truckId: id };
     }
-
     const truck = await Truck.findOne(query)
       .populate("driver", "username email")
       .populate("assignedRoute");
@@ -93,7 +81,6 @@ exports.getTruckById = async (req, res) => {
   }
 };
 
-// Get Truck by driver (user) ID
 exports.getTruckByDriverId = async (req, res) => {
   try {
     const driverId = req.user.id;
@@ -112,19 +99,14 @@ exports.getTruckByDriverId = async (req, res) => {
   }
 };
 
-// UPDATE Truck by truckId
 exports.updateTruck = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Truck ID:", id);
-
     const { capacity, status, currentLocation, latitude, longitude } = req.body;
-
-    // ✅ Use an object as the filter
     const updatedTruck = await Truck.findOneAndUpdate(
-      { _id: id }, // or { truckId: id } if you're using custom truckId
+      { _id: id }, 
       { capacity, status, currentLocation, latitude, longitude },
-      { new: true } // returns updated document
+      { new: true } 
     );
 
     if (!updatedTruck) {
@@ -138,14 +120,11 @@ exports.updateTruck = async (req, res) => {
   }
 };
 
-// DELETE Truck by truckId
 exports.deleteTruck = async (req, res) => {
   try {
     const { id } = req.params;
-
     let query = {};
 
-    // Check if 'id' is a valid ObjectId
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { truckId: id }] };
     } else {
@@ -163,11 +142,9 @@ exports.deleteTruck = async (req, res) => {
   }
 };
 
-// update the truck status to "In Service"
 exports.updateTruckStatusInService = async (req, res) => {
   try {
     const { truckId, collectionId } = req.params;
-
     const updatedTruck = await Truck.findByIdAndUpdate(
       truckId,
       { status: "In Service" },
@@ -177,7 +154,6 @@ exports.updateTruckStatusInService = async (req, res) => {
     if (!updatedTruck) {
       return res.status(404).json({ message: "Truck not found" });
     }
-
     const updatedRoute = await CollectionRoute.findByIdAndUpdate(
       collectionId,
       { deliveryStatus: "In Progress" },
@@ -199,11 +175,9 @@ exports.updateTruckStatusInService = async (req, res) => {
   }
 };
 
-// update the truck status to "Available"
 exports.updateTruckStatusAvailable = async (req, res) => {
   try {
     const { truckId, collectionId } = req.params;
-
     const updatedTruck = await Truck.findByIdAndUpdate(
       truckId,
       { status: "Available" },
@@ -236,11 +210,9 @@ exports.updateTruckStatusAvailable = async (req, res) => {
 };
 
 
-// update the truck's current waste load when garbage is collected
 exports.updateTruckWasteLoad = async (req, res) => {
   try {
     const { truckId, garbageId } = req.params;
-
     const garbage = await Garbage.findById(garbageId);
     if (!garbage) {
       return res.status(404).json({ message: "Garbage not found" });
@@ -261,7 +233,6 @@ exports.updateTruckWasteLoad = async (req, res) => {
 
     truck.currentWasteLoad = newWasteLoad;
     await truck.save();
-
     garbage.wasteWeight = 0;
     garbage.status = "Collected";
     await garbage.save();

@@ -55,14 +55,13 @@ exports.updateUserRole = async (req, res) => {
     const { _id } = req.params;
 
     const user = await User.findByIdAndUpdate(_id, { userType }, { new: true })
-      .populate("userType", "name description permissionObject") // optional
-      .select("-password"); // hide password
+      .populate("userType", "name description permissionObject")
+      .select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Convert to plain object and add permissionObject dynamically
     const userObj = user.toObject();
     userObj.permissionObject = user.userType?.permissionObject || {};
 
@@ -98,23 +97,21 @@ exports.login = async (req, res) => {
   }
 };
 
-// Middleware to protect routes
 exports.protect = (req, res, next) => {
-  const token = req.header("Authorization")?.split(" ")[1]; // Expect Bearer token
+  const token = req.header("Authorization")?.split(" ")[1];
 
   if (!token)
     return res.status(401).json({ message: "No token, authorization denied" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // {id: user._id}
+    req.user = decoded;
     next();
   } catch (err) {
     res.status(401).json({ message: "Token is not valid" });
   }
 };
 
-//verify current user
 exports.currentUser = async (req, res) => {
   const authHeader = req.header("Authorization");
   if (!authHeader) {

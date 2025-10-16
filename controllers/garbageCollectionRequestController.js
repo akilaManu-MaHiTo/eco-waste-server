@@ -39,7 +39,6 @@ exports.getGarbageCollectionRequestApproved = async (req, res) => {
   }
 };
 
-// GET /api/dashboard/garbage-by-category
 exports.getGarbageByCategory = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
@@ -62,11 +61,15 @@ exports.getGarbageByCategory = async (req, res) => {
     ]);
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching garbage by category", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching garbage by category",
+        error: error.message,
+      });
   }
 };
 
-// GET /api/dashboard/requests-by-status
 exports.getRequestsByStatus = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
@@ -79,11 +82,15 @@ exports.getRequestsByStatus = async (req, res) => {
     ]);
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching requests by status", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching requests by status",
+        error: error.message,
+      });
   }
 };
 
-// GET /api/dashboard/waste-by-bin-type
 exports.getWasteByBinType = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
@@ -115,11 +122,15 @@ exports.getWasteByBinType = async (req, res) => {
     ]);
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching waste by bin type", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching waste by bin type",
+        error: error.message,
+      });
   }
 };
 
-// GET /api/dashboard/daily-collections
 exports.getDailyCollections = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
@@ -128,7 +139,7 @@ exports.getDailyCollections = async (req, res) => {
           _id: {
             $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
           },
-          totalWeight: { $sum: "$garbageId.wasteWeight" }, // fallback if stored inline
+          totalWeight: { $sum: "$garbageId.wasteWeight" },
           count: { $sum: 1 },
         },
       },
@@ -136,11 +147,15 @@ exports.getDailyCollections = async (req, res) => {
     ]);
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching daily collections", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching daily collections",
+        error: error.message,
+      });
   }
 };
 
-// GET /api/dashboard/revenue-by-category
 exports.getRevenueByCategory = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
@@ -163,11 +178,15 @@ exports.getRevenueByCategory = async (req, res) => {
     ]);
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching revenue by category", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching revenue by category",
+        error: error.message,
+      });
   }
 };
 
-// GET /api/dashboard/monthly-requests
 exports.getMonthlyRequests = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
@@ -225,13 +244,10 @@ exports.getMonthlyRequests = async (req, res) => {
   }
 };
 
-// GET /api/dashboard/daily-requests
-// GET /api/dashboard/daily-requests
 exports.getDailyRequestsByDateAndTime = async (req, res) => {
   try {
     const data = await GarbageCollectionRequest.aggregate([
       {
-        // Convert dateAndTime string to Date object
         $addFields: {
           requestDate: {
             $dateFromString: { dateString: "$dateAndTime", format: "%Y-%m-%d %H:%M" }
@@ -239,18 +255,17 @@ exports.getDailyRequestsByDateAndTime = async (req, res) => {
         }
       },
       {
-        // Group by year, month, day
         $group: {
           _id: {
             year: { $year: "$requestDate" },
             month: { $month: "$requestDate" },
-            day: { $dayOfMonth: "$requestDate" }
+            day: { $dayOfMonth: "$requestDate" },
           },
-          totalRequests: { $sum: 1 }
-        }
+          totalRequests: { $sum: 1 },
+        },
       },
-      { 
-        $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } 
+      {
+        $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
       },
       {
         $project: {
@@ -263,11 +278,11 @@ exports.getDailyRequestsByDateAndTime = async (req, res) => {
             $dateFromParts: {
               year: "$_id.year",
               month: "$_id.month",
-              day: "$_id.day"
-            }
-          }
-        }
-      }
+              day: "$_id.day",
+            },
+          },
+        },
+      },
     ]);
 
     res.status(200).json(data);
@@ -275,9 +290,7 @@ exports.getDailyRequestsByDateAndTime = async (req, res) => {
     console.error("Error fetching daily requests by dateAndTime:", error);
     res.status(500).json({
       message: "Server Error: Unable to fetch daily requests",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
-

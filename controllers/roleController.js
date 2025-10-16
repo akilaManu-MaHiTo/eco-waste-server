@@ -26,7 +26,6 @@ exports.updateRole = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-
     const role = await Role.findByIdAndUpdate(id, updates, { new: true });
 
     if (!role) {
