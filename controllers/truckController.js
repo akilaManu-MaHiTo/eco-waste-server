@@ -262,7 +262,6 @@ exports.updateTruckWasteLoad = async (req, res) => {
     truck.currentWasteLoad = newWasteLoad;
     await truck.save();
 
-    garbage.wasteWeight = 0;
     garbage.status = "Collected";
     await garbage.save();
 

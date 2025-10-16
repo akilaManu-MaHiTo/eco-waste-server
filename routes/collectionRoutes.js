@@ -8,6 +8,7 @@ const {
   updateDeliveryStatusInProgress,
   updateDeliveryStatusCompleted,
   getInProgressRoutes,
+  getCompletedRoutes,
 } = require("../controllers/collectionController");
 const router = express.Router();
 
@@ -15,6 +16,7 @@ const router = express.Router();
 router.post("/", protect, createCollectionRoute);
 router.get("/", protect, getAllCollectionRoutes);
 router.get("/pending", protect, getPendingRoutes);
+router.get("/completed", protect, getCompletedRoutes);
 router.get("/in-progress", protect, getInProgressRoutes);
 router.put("/in-progress/:id", protect, updateDeliveryStatusInProgress);
 router.put("/completed/:id", protect, updateDeliveryStatusCompleted);
