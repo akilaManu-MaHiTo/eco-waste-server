@@ -11,7 +11,6 @@ const garbageRoutes = require("./routes/garbageRouter");
 const truckRoutes = require("./routes/truckRoutes");
 const garbageRequestRoutes = require("./routes/garbageCollectionRequestRoutes");
 const collectionRoutes = require("./routes/collectionRoutes");
-const binCollectionRoutes = require('./routes/binCollectionRequest');
 
 const cors = require("cors");
 const app = express();
@@ -37,7 +36,6 @@ app.use("/api/garbage", garbageRoutes);
 app.use("/api/truck", truckRoutes);
 app.use("/api/garbage-request", garbageRequestRoutes);
 app.use("/api/collection-route", collectionRoutes);
-app.use('/api/bin-collection-request', binCollectionRoutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the backend API!");
