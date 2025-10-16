@@ -1,6 +1,8 @@
 const Payment = require("../models/Payhere");
 const GarbageRequest = require("../models/GarbageRequest");
 const Garbage = require("../models/Garbage");
+const PaymentBin = require("../models/PaymentBin");
+const WasteBin = require("../models/WasteBin");
 exports.notifyPayment = async (req, res) => {
   try {
     const paymentData = req.body;
@@ -12,7 +14,7 @@ exports.notifyPayment = async (req, res) => {
 
     const payment = await Payment.create(paymentData);
 
-    if (paymentData.status_code === '2') {
+    if (paymentData.status_code === "2") {
       const requestComplete = await GarbageRequest.create({
         garbageId: paymentData.custom_2,
         dateAndTime: paymentData.custom_1,
@@ -34,6 +36,46 @@ exports.notifyPayment = async (req, res) => {
         paymentData.status_code
       );
     }
+    console.log("Payment processed:", payment.payment_id);
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error("Error saving payment:", error);
+    res.status(500).send("Server Error");
+  }
+};
+
+exports.notifyPaymentBin = async (req, res) => {
+  try {
+    const paymentData = req.body;
+    console.log("Received payment notification:", paymentData);
+
+    if (!paymentData.payment_id) {
+      return res.status(400).send("payment_id is missing");
+    }
+
+    const payment = await PaymentBin.create(paymentData);
+    if (paymentData.status_code === "2") {
+      const [latitude, longitude] = paymentData.custom_1.split("-");
+      const [binId, userId] = paymentData.custom_2.split("-");
+      const updatedRequest = await GarbageCollectionRequest.findByIdAndUpdate(
+        paymentData.binId,
+        {
+          status: "Purchased",
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          owner: userId,
+          availability: false,
+        },
+        { new: true }
+      );
+      console.log("Garbage request updated:", updatedRequest?._id);
+    } else {
+      console.log(
+        "Payment not successful, status code:",
+        paymentData.status_code
+      );
+    }
+
     console.log("Payment processed:", payment.payment_id);
     res.status(200).send("OK");
   } catch (error) {

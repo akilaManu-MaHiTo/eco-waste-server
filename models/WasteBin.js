@@ -11,14 +11,14 @@ const wasteBinSchema = new mongoose.Schema(
     location: {
       type: String,
       required: false,
-      default: "warehouse", 
+      default: "warehouse",
     },
-    latitude: { type: Number, required: true },
-    longitude: { type: Number, required: true },
+    latitude: { type: Number },
+    longitude: { type: Number },
     currentWasteLevel: {
       type: Number,
       required: false,
-      default: 0, 
+      default: 0,
     },
     thresholdLevel: {
       type: Number,
@@ -32,6 +32,16 @@ const wasteBinSchema = new mongoose.Schema(
     availability: {
       type: Boolean,
       default: true,
+    },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+    status: {
+      type: String,
+      enum: ["NotPurchased", "Purchased", "Maintenance"],
+      default: "NotPurchased",
     },
   },
   { timestamps: true }
