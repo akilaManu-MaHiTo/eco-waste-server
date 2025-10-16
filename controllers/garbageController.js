@@ -13,7 +13,6 @@ exports.createGarbage = async (req, res) => {
     }
     const allGarbage = await Garbage.find({ binId, status: "Pending" });
     const totalWeight = allGarbage.reduce((sum, g) => sum + g.wasteWeight, 0);
-
     const threshold = Number(ownerBinUsage.thresholdLevel);
     const newTotal = totalWeight + Number(wasteWeight);
     if (newTotal > threshold) {
@@ -128,16 +127,13 @@ exports.getCurrentSummary = async (req, res) => {
     if (!req.user || !req.user.id) {
       return res.status(401).json({ message: "Authentication required" });
     }
-
     if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
       return res.status(400).json({ message: "Invalid user identifier" });
     }
 
     const userIdStr = req.user.id;
     const userObjectId = new mongoose.Types.ObjectId(userIdStr);
-
     const { startDate, endDate, category } = req.query;
-
     const userDoc = await User.findById(userObjectId)
       .select("username email")
       .lean();
@@ -174,7 +170,6 @@ exports.getCurrentSummary = async (req, res) => {
           summary: [],
         });
       }
-
       rangeStart = new Date(earliest.createdAt);
       rangeStart.setHours(0, 0, 0, 0);
     }
@@ -427,14 +422,10 @@ exports.getGarbageTrend = async (req, res) => {
   }
 };
 
-/**
- * Get current garbage level as percentage.
- */
 exports.getCurrentGarbageLevel = async (req, res) => {
   try {
     const { userId, category } = req.query;
 
-    // Validate userId if provided
     const filters = {};
     if (userId) {
       if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -447,7 +438,6 @@ exports.getCurrentGarbageLevel = async (req, res) => {
     const DEFAULT_CAPACITY =
       parseFloat(process.env.DEFAULT_BIN_CAPACITY) || 100;
 
-    // Aggregation: sum waste per bin, lookup bin to get capacity/name
     const pipeline = [
       { $match: filters },
       {
@@ -459,7 +449,7 @@ exports.getCurrentGarbageLevel = async (req, res) => {
       },
       {
         $lookup: {
-          from: "bins", // adjust if your collection name differs
+          from: "bins",
           localField: "_id",
           foreignField: "_id",
           as: "bin",
@@ -511,8 +501,6 @@ exports.getCurrentGarbageLevel = async (req, res) => {
     ];
 
     const bins = await Garbage.aggregate(pipeline);
-
-    // compute overall percent: sum(totalWeight) / sum(capacity)
     const totalWeightAll = bins.reduce((s, b) => s + (b.totalWeight || 0), 0);
     const totalCapacityAll = bins.reduce(
       (s, b) => s + (b.capacity || DEFAULT_CAPACITY),
@@ -523,7 +511,6 @@ exports.getCurrentGarbageLevel = async (req, res) => {
         ? 0
         : Math.min((totalWeightAll / totalCapacityAll) * 100, 100);
 
-    // Round numbers for client readability
     const formattedBins = bins.map((b) => ({
       binId: b.binId,
       binName: b.binName,

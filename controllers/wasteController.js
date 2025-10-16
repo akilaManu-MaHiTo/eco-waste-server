@@ -2,7 +2,6 @@ const WasteBin = require("../models/WasteBin");
 const Role = require("../models/Role");
 const User = require("../models/User");
 
-// CREATE WasteBin
 exports.createWasteBin = async (req, res) => {
   try {
     const { binType, thresholdLevel } = req.body;
@@ -14,15 +13,13 @@ exports.createWasteBin = async (req, res) => {
         error: "Forbidden: You don't have permission to create waste bins",
       });
     }
-
-    let prefix = "WB"; // default
+    let prefix = "WB";
     if (binType.toLowerCase() === "plastic") prefix = "PL";
     else if (binType.toLowerCase() === "food") prefix = "FD";
     else if (binType.toLowerCase() === "paper") prefix = "PP";
 
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const binId = `${prefix}-${randomNum}`;
-
     const newWasteBin = await WasteBin.create({
       binId,
       binType,
@@ -36,7 +33,6 @@ exports.createWasteBin = async (req, res) => {
   }
 };
 
-// GET all WasteBins
 exports.getWasteBins = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -47,7 +43,6 @@ exports.getWasteBins = async (req, res) => {
         error: "Forbidden: You don't have permission to view waste bins",
       });
     }
-
     const bins = await WasteBin.find();
     res.status(200).json(bins);
   } catch (err) {
@@ -56,7 +51,6 @@ exports.getWasteBins = async (req, res) => {
   }
 };
 
-// GET a WasteBin by ID (MongoDB _id or binId)
 exports.getWasteBinById = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -67,7 +61,6 @@ exports.getWasteBinById = async (req, res) => {
         error: "Forbidden: You don't have permission to view waste bins",
       });
     }
-
     const { id } = req.params;
     const bin = await WasteBin.findOne({ $or: [{ _id: id }, { binId: id }] });
 
@@ -80,16 +73,12 @@ exports.getWasteBinById = async (req, res) => {
   }
 };
 
-// UPDATE WasteBin specifcly by binId
 exports.updateWasteBin = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("bin ID: " + id);
-
     const { location, currentWasteLevel, thresholdLevel, availability } =
       req.body;
 
-    // Permission check
     const userId = req.user.id;
     const user = await User.findById(userId);
     const userRole = await Role.findById(user.userType);
@@ -100,7 +89,6 @@ exports.updateWasteBin = async (req, res) => {
       });
     }
 
-    // Update the waste bin
     const updatedWasteBin = await WasteBin.findByIdAndUpdate(
       id,
       { location, currentWasteLevel, thresholdLevel, availability },
@@ -118,11 +106,9 @@ exports.updateWasteBin = async (req, res) => {
   }
 };
 
-// DELETE WasteBin
 exports.deleteWasteBin = async (req, res) => {
   try {
     const { id } = req.params;
-
     const userId = req.user.id;
     const user = await User.findById(userId);
     const userRole = await Role.findById(user.userType);
@@ -131,7 +117,6 @@ exports.deleteWasteBin = async (req, res) => {
         error: "Forbidden: You don't have permission to delete waste bins",
       });
     }
-
     const deletedBin = await WasteBin.findOneAndDelete({
       $or: [{ _id: id }, { binId: id }],
     });
@@ -146,12 +131,9 @@ exports.deleteWasteBin = async (req, res) => {
   }
 };
 
-// update the waste bin level 0
 exports.resetWasteBinLevel = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Reset bin ID: " + id);
-
     const updatedWasteBin = await WasteBin.findByIdAndUpdate(
       id,
       { currentWasteLevel: 0 },

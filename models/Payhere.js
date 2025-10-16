@@ -60,7 +60,6 @@ const PaymentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // Optional card details if payment made via credit/debit card
     card_holder_name: {
       type: String,
       default: null,

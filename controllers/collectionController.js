@@ -25,7 +25,6 @@ exports.createCollectionRoute = async (req, res) => {
   }
 };
 
-// Get all collection routes
 exports.getAllCollectionRoutes = async (req, res) => {
   try {
     const routes = await CollectionRoute.find()
@@ -39,7 +38,7 @@ exports.getAllCollectionRoutes = async (req, res) => {
           ],
         },
       })
-      .populate("truck"); // also populate truck details
+      .populate("truck");
 
     res.json(routes);
   } catch (error) {
@@ -47,7 +46,6 @@ exports.getAllCollectionRoutes = async (req, res) => {
   }
 };
 
-// Get a single collection route by ID
 exports.getCollectionRouteById = async (req, res) => {
   try {
     const route = await CollectionRoute.findById(req.params.id).populate(
@@ -61,7 +59,6 @@ exports.getCollectionRouteById = async (req, res) => {
   }
 };
 
-// Update a collection route
 exports.updateCollectionRoute = async (req, res) => {
   try {
     const { garbage } = req.body;
@@ -78,7 +75,6 @@ exports.updateCollectionRoute = async (req, res) => {
   }
 };
 
-// Delete a collection route
 exports.deleteCollectionRoute = async (req, res) => {
   try {
     const route = await CollectionRoute.findByIdAndDelete(req.params.id);
@@ -90,12 +86,9 @@ exports.deleteCollectionRoute = async (req, res) => {
   }
 };
 
-// Get route by truck ID (only pending delivery)
 exports.getRoutesByTruckId = async (req, res) => {
   try {
     const { truckId } = req.params;
-
-    // Step 1: Check if the truck has any assigned routes
     const assignedRoutes = await CollectionRoute.find({ truck: truckId });
 
     if (!assignedRoutes || assignedRoutes.length === 0) {
@@ -120,7 +113,6 @@ exports.getRoutesByTruckId = async (req, res) => {
       })
       .populate("truck");
 
-    // Step 3: Return the pending route (if any)
     if (!pendingRoute) {
       return res
         .status(404)
@@ -134,7 +126,6 @@ exports.getRoutesByTruckId = async (req, res) => {
   }
 };
 
-// get only pending route
 exports.getPendingRoutes = async (req, res) => {
   try {
     const pendingRoute = await CollectionRoute.find({
@@ -152,7 +143,6 @@ exports.getPendingRoutes = async (req, res) => {
       })
       .populate("truck");
 
-    // Step 3: Return the pending route (if any)
     if (!pendingRoute) {
       return res
         .status(404)
@@ -166,9 +156,8 @@ exports.getPendingRoutes = async (req, res) => {
   }
 };
 
-// get In progress route
 exports.getInProgressRoutes = async (req, res) => {
-try {
+  try {
     const pendingRoute = await CollectionRoute.find({
       deliveryStatus: "In Progress",
     })
@@ -184,7 +173,6 @@ try {
       })
       .populate("truck");
 
-    // Step 3: Return the pending route (if any)
     if (!pendingRoute) {
       return res
         .status(404)
@@ -196,10 +184,8 @@ try {
     console.error("Error fetching route:", error);
     res.status(500).json({ error: error.message });
   }
-}
+};
 
-
-// update delivery status
 exports.updateDeliveryStatusInProgress = async (req, res) => {
   try {
     const { id } = req.params;
