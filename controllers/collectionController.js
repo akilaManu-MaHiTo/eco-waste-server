@@ -106,7 +106,7 @@ exports.getRoutesByTruckId = async (req, res) => {
 
     const pendingRoute = await CollectionRoute.findOne({
       truck: truckId,
-      deliveryStatus: "Pending", 
+      deliveryStatus: "Pending",
     })
       .populate({
         path: "garbage",
@@ -131,5 +131,76 @@ exports.getRoutesByTruckId = async (req, res) => {
   } catch (error) {
     console.error("Error fetching route:", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+// get only pending route
+exports.getPendingRoutes = async (req, res) => {
+  try {
+    const pendingRoute = await CollectionRoute.find({
+      deliveryStatus: "Pending",
+    })
+      .populate({
+        path: "garbage",
+        populate: {
+          path: "garbageId",
+          populate: [
+            { path: "binId" },
+            { path: "createdBy", select: "-password" },
+          ],
+        },
+      })
+      .populate("truck");
+
+    // Step 3: Return the pending route (if any)
+    if (!pendingRoute) {
+      return res
+        .status(404)
+        .json({ message: "No pending deliveries for this truck." });
+    }
+
+    res.json(pendingRoute);
+  } catch (error) {
+    console.error("Error fetching route:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// update delivery status
+exports.updateDeliveryStatusInProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateddeliveryStatus = await CollectionRoute.findByIdAndUpdate(
+      id,
+      { deliveryStatus: "In Progress" },
+      { new: true }
+    );
+
+    if (!updateddeliveryStatus) {
+      return res.status(404).json({ message: "Route not found" });
+    }
+    res.status(200).json(updateddeliveryStatus);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Could not update delivery status" });
+  }
+};
+
+exports.updateDeliveryStatusCompleted = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateddeliveryStatus = await CollectionRoute.findByIdAndUpdate(
+      id,
+      { deliveryStatus: "Completed" },
+      { new: true }
+    );
+
+    if (!updateddeliveryStatus) {
+      return res.status(404).json({ message: "Route not found" });
+    }
+    res.status(200).json(updateddeliveryStatus);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Could not update delivery status" });
   }
 };
