@@ -126,6 +126,23 @@ exports.getTodayGarbage = async (req, res) => {
   }
 };
 
+/**
+ * Build a category-based summary for the authenticated user.
+ *
+ * Request context:
+ * - Authentication is required (expects `req.user.id`).
+ * - Optional query params: `startDate`, `endDate`, and `category` (ISO strings).
+ *
+ * Behavior:
+ * - Validates the user identifier and derives a reporting window (defaults to
+ *   the first available garbage record through now when dates are omitted).
+ * - Aggregates the user's garbage deposits by `garbageCategory`, returning
+ *   per-category totals, deposit counts, and the last deposit timestamp.
+ * - Supports legacy records where `createdBy` may be stored as a string.
+ *
+ * Response payload: { user, range, totals, summary[] } where `summary`
+ * contains the per-category breakdown needed for pie or bar charts.
+ */
 exports.getCurrentSummary = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -280,11 +297,47 @@ exports.getCurrentSummary = async (req, res) => {
       summary: formatted,
     });
   } catch (err) {
-    console.error("Error building summary:", err);
-    res.status(500).json({ message: "Server Error: Unable to build summary" });
+    // Centralized error handling for getCurrentSummary
+    console.error("Error building summary:", {
+      message: err && err.message,
+      name: err && err.name,
+      stack: err && err.stack ? err.stack.split("\n")[0] : undefined,
+    });
+
+    // Mongoose validation / cast errors -> 400 Bad Request with safe details
+    if (err && (err.name === "ValidationError" || err.name === "CastError")) {
+      return res.status(400).json({ error: "Invalid request", details: err.message });
+    }
+
+    // Mongo network or connectivity issues -> 503 Service Unavailable
+    if (err && (err.name === "MongoNetworkError" || err.message && /timed out|ECONNREFUSED/i.test(err.message))) {
+      return res.status(503).json({ error: "Database unavailable, please try again later" });
+    }
+
+    // Fallback: do not leak internals to client
+    return res.status(500).json({ error: "Server Error: Unable to build summary" });
   }
 };
 
+/**
+ * Generate a day-by-day garbage trend for the authenticated user.
+ *
+ * Request context:
+ * - Requires an authenticated user (`req.user.id`).
+ * - Optional query params: `startDate`, `endDate`, `category` (ISO strings).
+ *   Without dates the handler defaults to the last 30 days (inclusive).
+ *
+ * Behavior:
+ * - Validates the date inputs, normalizes them to full-day windows, and
+ *   tolerates `createdBy` values stored as ObjectIds or strings.
+ * - Aggregates the user's garbage deposits per day and per category, returning
+ *   weight totals and deposit counts so the client can render line charts.
+ * - Ensures the returned series is continuous by emitting zeroed entries for
+ *   days without data.
+ *
+ * Response payload: { startDate, endDate, trend[] } where each trend entry
+ * contains the ISO date, per-category stats, and overall totals for that day.
+ */
 exports.getGarbageTrend = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -425,13 +478,41 @@ exports.getGarbageTrend = async (req, res) => {
       trend,
     });
   } catch (err) {
-    console.error("Error building trend:", err);
+    console.error("Error building trend:", {
+      message: err && err.message,
+      name: err && err.name,
+      stack: err && err.stack ? err.stack.split("\n")[0] : undefined,
+    });
+
+    if (err && (err.name === "ValidationError" || err.name === "CastError")) {
+      return res.status(400).json({ error: "Invalid request", details: err.message });
+    }
+
+    if (err && (err.name === "MongoNetworkError" || err.message && /timed out|ECONNREFUSED/i.test(err.message))) {
+      return res.status(503).json({ error: "Database unavailable, please try again later" });
+    }
+
     return res.status(500).json({ error: "Server Error" });
   }
 };
 
 /**
- * Get current garbage level as percentage.
+ * Compute per-bin fill levels and overall capacity usage.
+ *
+ * Request context:
+ * - Optional query params: `userId` (ObjectId) and `category` (string).
+ *   When `userId` is provided the aggregation is scoped to that creator.
+ *
+ * Behavior:
+ * - Builds a Mongo aggregation that groups garbage entries by `binId`, sums
+ *   deposited weight, counts deposits, and enriches with bin metadata.
+ * - Calculates `percentFilled` for each bin using the bin's configured
+ *   capacity, falling back to `DEFAULT_BIN_CAPACITY` (or 100) when undefined.
+ * - Produces an overall snapshot by comparing total weight versus total
+ *   capacity across the returned bins, capping values at 100%.
+ *
+ * Response payload: { overall, bins[] } where each bin entry includes the
+ * normalized weight, capacity, fill percentage, and deposit count.
  */
 exports.getCurrentGarbageLevel = async (req, res) => {
   try {
@@ -545,7 +626,20 @@ exports.getCurrentGarbageLevel = async (req, res) => {
       bins: formattedBins,
     });
   } catch (err) {
-    console.error("Error computing garbage level:", err);
+    console.error("Error computing garbage level:", {
+      message: err && err.message,
+      name: err && err.name,
+      stack: err && err.stack ? err.stack.split("\n")[0] : undefined,
+    });
+
+    if (err && (err.name === "ValidationError" || err.name === "CastError")) {
+      return res.status(400).json({ error: "Invalid request", details: err.message });
+    }
+
+    if (err && (err.name === "MongoNetworkError" || err.message && /timed out|ECONNREFUSED/i.test(err.message))) {
+      return res.status(503).json({ error: "Database unavailable, please try again later" });
+    }
+
     return res.status(500).json({ error: "Server Error" });
   }
 };
