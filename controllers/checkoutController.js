@@ -3,6 +3,12 @@ const GarbageRequest = require("../models/GarbageRequest");
 const Garbage = require("../models/Garbage");
 const PaymentBin = require("../models/PaymentBin");
 const WasteBin = require("../models/WasteBin");
+/**
+ * Processes PayHere callbacks for garbage collection payments and opens a request when successful.
+ * @param {import('express').Request} req Express request object containing PayHere payload.
+ * @param {import('express').Response} res Express response object used to acknowledge the callback.
+ * @returns {Promise<void>} A promise resolving once the notification workflow completes.
+ */
 exports.notifyPayment = async (req, res) => {
   try {
     const paymentData = req.body;
@@ -40,10 +46,25 @@ exports.notifyPayment = async (req, res) => {
     res.status(200).send("OK");
   } catch (error) {
     console.error("Error saving payment:", error);
+
+    if (error?.name === "ValidationError") {
+      return res.status(400).send("Invalid payment data");
+    }
+
+    if (error?.name === "MongoNetworkError") {
+      return res.status(503).send("Database temporarily unavailable");
+    }
+
     res.status(500).send("Server Error");
   }
 };
 
+/**
+ * Processes PayHere callbacks for bin purchases and updates the purchased bin accordingly.
+ * @param {import('express').Request} req Express request object containing PayHere payload.
+ * @param {import('express').Response} res Express response object used to acknowledge the callback.
+ * @returns {Promise<void>} A promise resolving once the notification workflow completes.
+ */
 exports.notifyPaymentBin = async (req, res) => {
   try {
     const paymentData = req.body;
@@ -80,6 +101,15 @@ exports.notifyPaymentBin = async (req, res) => {
     res.status(200).send("OK");
   } catch (error) {
     console.error("Error saving payment:", error);
+
+    if (error?.name === "ValidationError") {
+      return res.status(400).send("Invalid payment data");
+    }
+
+    if (error?.name === "MongoNetworkError") {
+      return res.status(503).send("Database temporarily unavailable");
+    }
+
     res.status(500).send("Server Error");
   }
 };
